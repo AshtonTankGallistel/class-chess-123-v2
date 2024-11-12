@@ -35,6 +35,10 @@ public:
     bool        canBitMoveFrom(Bit& bit, BitHolder& src) override;
     bool        canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst) override;
     void        bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst) override;
+    //HELPER FUNCTION FOR ABOVE 4 FUNCS, FINDS OUT WHICH MOVES A PIECE CAN PERFORM
+    int        getPossibleMoves(Bit &bit, BitHolder &src, bool highlight);
+    //HELPER FUNCTION, CLEARS ALL HIGHLIGHTS
+    void       clearHighlights();
 
     void        stopGame() override;
     BitHolder& getHolderAt(const int x, const int y) override { return _grid[y][x]; }
@@ -46,5 +50,9 @@ private:
     const char  bitToPieceNotation(int row, int column) const;
 
     ChessSquare      _grid[8][8];
+
+    //ADDED VAR, TRACKS WHICH INDEXES THE PIECE CAN BE MOVED TO. MAX OF 28 (A piece can only have 27 spots total, so that+1)
+    //ENDS AT -1.
+    int         possibleMoves[28];
 };
 

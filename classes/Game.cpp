@@ -164,12 +164,14 @@ void Game::findDropTarget(ImVec2 &pos)
 			{
 				if (_dropTarget && &holder != _dropTarget)
 				{
+					//printf("nullify");
 					_dropTarget->willNotDropBit(_dragBit);
 					_dropTarget->setHighlighted(false);
 					_dropTarget = nullptr;
 				}
 				if (holder.canDropBitAtPoint(_dragBit, pos) && canBitMoveFromTo(*_dragBit, *_oldHolder, holder))
 				{
+					//printf("bruh");
 					_dropTarget = &holder;
 					_dropTarget->setHighlighted(true);
 				}
