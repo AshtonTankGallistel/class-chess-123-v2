@@ -133,3 +133,15 @@ This project is licensed under the MIT License.
 
 ---
 *This README is part of an educational project and is intended to serve as an example of good documentation practices.*
+---
+
+Hello, apologies if I am putting this in the incorrect place.
+Here is the required screenshots for this project.
+The board, on startup, looks as such.
+![Chess Board](https://raw.githubusercontent.com/AshtonTankGallistel/class-chess-123/refs/heads/main/screenshots/chessStart.png)
+
+However, I was sadly unable to do the random move generation nor array in time, as I had not noticed it until shortly before the due time, and there's no description of how we are supposed to do either. As such, I've attached a screenshot of 20 moves, randomly performed by me, instead.
+![Chess Board](https://raw.githubusercontent.com/AshtonTankGallistel/class-chess-123/refs/heads/main/screenshots/chess20Moves.png)
+
+I apologize for the poor quality and shortness of my additions to this readme. Thank you for reading regardless.
+-Ashton Gallistel
