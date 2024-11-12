@@ -110,6 +110,11 @@ bool Chess::actionForEmptyHolder(BitHolder &holder)
 
 bool Chess::canBitMoveFrom(Bit &bit, BitHolder &src)
 {
+    //can only move if it's the current player's piece
+    //std::cout<<getCurrentPlayer()->playerNumber()<<","<<bit.gameTag() / 128<<std::endl;
+    if(getCurrentPlayer()->playerNumber() != bit.gameTag() / 128){
+        return false;
+    }
     //If you're reading this, can you please let me know when the below line of code was described?
     //I spent several hours straight trying to figure out what I was supposed to do here to get the bit's location,
     //and could only find this in a single answer to an unrelated question in the discord
@@ -139,6 +144,7 @@ bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
 void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst)
 {
     clearHighlights(); //clear highlights from move
+    endTurn();
 }
 
 //helper function, records what moves the piece can perform into the possibleMoves variable. returns how many moves there are
