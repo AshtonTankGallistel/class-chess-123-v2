@@ -145,3 +145,10 @@ However, I was sadly unable to do the random move generation nor array in time, 
 
 I apologize for the poor quality and shortness of my additions to this readme. Thank you for reading regardless.
 -Ashton Gallistel
+
+---
+
+Hello, this is my addition to the followup assignment. It's again very short and likely in the wrong place, as I again failed to manage my time properly. I have, at the time of writing, managed to add:
+-FENToBoard function
+-pawn promotion (to queen only)
+I am attempting to add castling right now, but am unlikely to before the deadline. I apologize for failing to properly manage my time, and thank you for reading.
