@@ -36,9 +36,15 @@ public:
     bool        canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst) override;
     void        bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst) override;
     //HELPER FUNCTION FOR ABOVE 4 FUNCS, FINDS OUT WHICH MOVES A PIECE CAN PERFORM
-    int        getPossibleMoves(Bit &bit, BitHolder &src, bool highlight);
+    std::vector<int>*   getPossibleMoves(Bit &bit, BitHolder &src);
     //HELPER FUNCTION, CLEARS ALL HIGHLIGHTS
-    void       clearHighlights();
+    void        clearHighlights();
+    //MOVE GENERATOR FUNCTION. GETS ALL POSSIBLE MOVES FOR THE CURRENT TURN
+    void        generateMoves();
+    //BOARD SETUP FUNCTION. SETS UP BOARD BASED ON FEN STRING
+    void        FENtoBoard(std::string FEN);
+    //HELPER FUNCTION, SETS A PIECE ONTO THE BOARD
+    void        setPiece(int pos, int player, ChessPiece piece);
 
     void        stopGame() override;
     BitHolder& getHolderAt(const int x, const int y) override { return _grid[y][x]; }
@@ -54,5 +60,16 @@ private:
     //ADDED VAR, TRACKS WHICH INDEXES THE PIECE CAN BE MOVED TO. MAX OF 28 (A piece can only have 27 spots total, so that+1)
     //ENDS AT -1.
     int         possibleMoves[28];
+    std::vector<int>* potentialMoves[64];
 };
 
+//
+// ADDED GAMESTATE CLASS (USES BITBOARDS)
+//
+class ChessState
+{
+public:
+    ChessState();
+    bool canCastle[4]; //{leftWhite,RightWhite,LeftBlack,RightBlack}
+    bool canEnPassant[16]; //White 0-7, Black 0-7
+};

@@ -5,6 +5,8 @@ const int HUMAN_PLAYER = -1;
 
 Chess::Chess()
 {
+    //potentialMoves.reserve(64); //want 1 per space on the board
+    //done here so as to ensure there's space when called elsewhere
 }
 
 Chess::~Chess()
@@ -51,53 +53,10 @@ void Chess::setUpBoard()
     }
 
     //setup pieces. 0=W,1=B
-    //128 is added to tag if B so that we can tell later which color the piece is
-    for(int i = 0; i < 2; i++){
-        //pawns
-        for(int x = 0; x < 8; x++){
-            Bit* bit = PieceForPlayer(i, Pawn);
-            bit->setPosition(_grid[1 + 5 * i][x].getPosition()); //W=1,B=6
-            bit->setParent(&_grid[1 + 5 * i][x]);
-            bit->setGameTag(Pawn + i * 128);
-            _grid[1 + 5 * i][x].setBit(bit);
-        }
-        //rooks
-        for(int j = 0; j < 8;j += 7){
-            Bit* bit = PieceForPlayer(i, Rook);
-            bit->setPosition(_grid[0 + 7 * i][j].getPosition());
-            bit->setParent(&_grid[0 + 7 * i][j]);
-            bit->setGameTag(Rook + i * 128);
-            _grid[0 + 7 * i][j].setBit(bit);
-        }
-        //knights
-        for(int j = 1; j < 7;j += 5){
-            Bit* bit = PieceForPlayer(i, Knight);
-            bit->setPosition(_grid[0 + 7 * i][j].getPosition());
-            bit->setParent(&_grid[0 + 7 * i][j]);
-            bit->setGameTag(Knight + i * 128);
-            _grid[0 + 7 * i][j].setBit(bit);
-        }
-        //bishops
-        for(int j = 2; j < 6;j += 3){
-            Bit* bit = PieceForPlayer(i, Bishop);
-            bit->setPosition(_grid[0 + 7 * i][j].getPosition());
-            bit->setParent(&_grid[0 + 7 * i][j]);
-            bit->setGameTag(Bishop + i * 128);
-            _grid[0 + 7 * i][j].setBit(bit);
-        }
-        //Queen
-        Bit* bit = PieceForPlayer(i, Queen);
-        bit->setPosition(_grid[0 + 7 * i][3].getPosition());
-        bit->setParent(&_grid[0 + 7 * i][3]);
-        bit->setGameTag(Queen + i * 128);
-        _grid[0 + 7 * i][3].setBit(bit);
-        //King
-        bit = PieceForPlayer(i, King);
-        bit->setPosition(_grid[0 + 7 * i][4].getPosition());
-        bit->setParent(&_grid[0 + 7 * i][4]);
-        bit->setGameTag(King + i * 128);
-        _grid[0 + 7 * i][4].setBit(bit);
-    }
+    FENtoBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+
+    //generate moves for starting player
+    generateMoves();
 }
 
 //
@@ -110,31 +69,27 @@ bool Chess::actionForEmptyHolder(BitHolder &holder)
 
 bool Chess::canBitMoveFrom(Bit &bit, BitHolder &src)
 {
-    //can only move if it's the current player's piece
-    //std::cout<<getCurrentPlayer()->playerNumber()<<","<<bit.gameTag() / 128<<std::endl;
-    if(getCurrentPlayer()->playerNumber() != bit.gameTag() / 128){
-        return false;
-    }
-    //If you're reading this, can you please let me know when the below line of code was described?
-    //I spent several hours straight trying to figure out what I was supposed to do here to get the bit's location,
-    //and could only find this in a single answer to an unrelated question in the discord
+    //can only move if it's the current player's piece. the check for this should have been done in generateMoves()
     ChessSquare& srcSquare = static_cast<ChessSquare&>(src);
     bool movable = false;
     clearHighlights(); //clear highlights from prev move
-    if(getPossibleMoves(bit,src,true) > 0){
+    //std::cout<< potentialMoves[srcSquare.getSquareIndex()]->size() <<std::endl;
+    if(potentialMoves[srcSquare.getSquareIndex()] != nullptr){
         movable= true;
+        for(int i = 0; i < potentialMoves[srcSquare.getSquareIndex()]->size(); i++){
+            int spot = (*potentialMoves[srcSquare.getSquareIndex()])[i];
+            _grid[spot/8][spot%8].setMoveHighlighted(true);
+        }
     }
     return movable;
 }
 
 bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
 {
+    ChessSquare& srcSquare = static_cast<ChessSquare&>(src);
     ChessSquare& dstSquare = static_cast<ChessSquare&>(dst);
-    for (int i : possibleMoves){
-        if(i == -1){ //all possbile moves seen
-            break;
-        }
-        else if(i == dstSquare.getSquareIndex()){
+    for (int i =0; i < potentialMoves[srcSquare.getSquareIndex()]->size(); i++){
+        if((*potentialMoves[srcSquare.getSquareIndex()])[i] == dstSquare.getSquareIndex()){
             return true;
         }
     }
@@ -145,12 +100,15 @@ void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst)
 {
     clearHighlights(); //clear highlights from move
     endTurn();
+    generateMoves(); //generate moves for new current player
 }
 
-//helper function, records what moves the piece can perform into the possibleMoves variable. returns how many moves there are
-int Chess::getPossibleMoves(Bit &bit, BitHolder &src, bool highlight){
+//helper function, records what moves the piece can perform into the possibleMoves variable.
+//returns how many moves there are.
+std::vector<int>* Chess::getPossibleMoves(Bit &bit, BitHolder &src){
     ChessSquare& srcSquare = static_cast<ChessSquare&>(src);
     int moveCount = 0;
+    std::vector<int>* moveList = new std::vector<int>;
     switch (bit.gameTag() % 128) // get remainder after 128 to get piece num
     {
     case Pawn:
@@ -164,8 +122,8 @@ int Chess::getPossibleMoves(Bit &bit, BitHolder &src, bool highlight){
         if(0 <= srcSquare.getRow() + direction && 7 >= srcSquare.getRow() + direction){
             if(_grid[srcSquare.getRow() + direction][srcSquare.getColumn()].empty()){
                 possibleMoves[moveCount] = 8*(srcSquare.getRow() + direction) + srcSquare.getColumn();
+                moveList->push_back(8*(srcSquare.getRow() + direction) + srcSquare.getColumn());
                 moveCount += 1;
-                _grid[srcSquare.getRow() + direction][srcSquare.getColumn()].setMoveHighlighted(highlight);
             }
 
             //add diagonals (done here since we know there's room vertically)
@@ -174,8 +132,8 @@ int Chess::getPossibleMoves(Bit &bit, BitHolder &src, bool highlight){
                     if(!_grid[srcSquare.getRow() + direction][srcSquare.getColumn() + i].empty()
                     && _grid[srcSquare.getRow() + direction][srcSquare.getColumn() + i].bit()->gameTag() / 128 != bit.gameTag() / 128){
                         possibleMoves[moveCount] = 8*(srcSquare.getRow() + direction) + srcSquare.getColumn() + i;
+                        moveList->push_back(8*(srcSquare.getRow() + direction) + srcSquare.getColumn() + i);
                         moveCount += 1;
-                        _grid[srcSquare.getRow() + direction][srcSquare.getColumn() + i].setMoveHighlighted(highlight);
                     }
                 }
             }
@@ -185,8 +143,8 @@ int Chess::getPossibleMoves(Bit &bit, BitHolder &src, bool highlight){
             if(0 <= srcSquare.getRow() + 2*direction && 7 >= srcSquare.getRow() + 2*direction
                 && _grid[srcSquare.getRow() + 2*direction][srcSquare.getColumn()].empty()){
                     possibleMoves[moveCount] = 8*(srcSquare.getRow() + 2*direction) + srcSquare.getColumn();
+                    moveList->push_back(8*(srcSquare.getRow() + 2*direction) + srcSquare.getColumn());
                     moveCount += 1;
-                    _grid[srcSquare.getRow() + 2*direction][srcSquare.getColumn()].setMoveHighlighted(highlight);
             }
         }
     }
@@ -208,8 +166,8 @@ int Chess::getPossibleMoves(Bit &bit, BitHolder &src, bool highlight){
                 if(_grid[srcSquare.getRow() + x][srcSquare.getColumn() + y].empty()
                     || _grid[srcSquare.getRow() + x][srcSquare.getColumn() + y].bit()->gameTag() / 128 != bit.gameTag() / 128){
                     possibleMoves[moveCount] = 8*(srcSquare.getRow() + x) + srcSquare.getColumn() + y;
+                    moveList->push_back(8*(srcSquare.getRow() + x) + srcSquare.getColumn() + y);
                     moveCount += 1;
-                    _grid[srcSquare.getRow() + x][srcSquare.getColumn() + y].setMoveHighlighted(highlight);
                 }
             }
         }
@@ -233,15 +191,15 @@ int Chess::getPossibleMoves(Bit &bit, BitHolder &src, bool highlight){
                     }
                     else if(_grid[row+i*x][col+i*y].empty()){
                         possibleMoves[moveCount] = 8*(row+i*x) + col+i*y;
+                        moveList->push_back(8*(row+i*x) + col+i*y);
                         moveCount += 1;
-                        _grid[row+i*x][col+i*y].setMoveHighlighted(highlight);
                     }
                     else{ //not empty, will break
                         //add move if the non-empty spot has an enemy piece
                         if(_grid[row+i*x][col+i*y].bit()->gameTag() / 128 != bit.gameTag() / 128){
                             possibleMoves[moveCount] = 8*(row+i*x) + col+i*y;
+                            moveList->push_back(8*(row+i*x) + col+i*y);
                             moveCount += 1;
-                            _grid[row+i*x][col+i*y].setMoveHighlighted(highlight);
                         }
                         break;
                     }
@@ -268,15 +226,15 @@ int Chess::getPossibleMoves(Bit &bit, BitHolder &src, bool highlight){
                     }
                     else if(_grid[row+i*x][col+i*y].empty()){
                         possibleMoves[moveCount] = 8*(row+i*x) + col+i*y;
+                        moveList->push_back(8*(row+i*x) + col+i*y);
                         moveCount += 1;
-                        _grid[row+i*x][col+i*y].setMoveHighlighted(highlight);
                     }
                     else{ //not empty, will break
                         //add move if the non-empty spot has an enemy piece
                         if(_grid[row+i*x][col+i*y].bit()->gameTag() / 128 != bit.gameTag() / 128){
                             possibleMoves[moveCount] = 8*(row+i*x) + col+i*y;
+                            moveList->push_back(8*(row+i*x) + col+i*y);
                             moveCount += 1;
-                            _grid[row+i*x][col+i*y].setMoveHighlighted(highlight);
                         }
                         break;
                     }
@@ -302,15 +260,15 @@ int Chess::getPossibleMoves(Bit &bit, BitHolder &src, bool highlight){
                     }
                     else if(_grid[row+i*x][col+i*y].empty()){
                         possibleMoves[moveCount] = 8*(row+i*x) + col+i*y;
+                        moveList->push_back(8*(row+i*x) + col+i*y);
                         moveCount += 1;
-                        _grid[row+i*x][col+i*y].setMoveHighlighted(highlight);
                     }
                     else{ //not empty, will break
                         //add move if the non-empty spot has an enemy piece
                         if(_grid[row+i*x][col+i*y].bit()->gameTag() / 128 != bit.gameTag() / 128){
                             possibleMoves[moveCount] = 8*(row+i*x) + col+i*y;
+                            moveList->push_back(8*(row+i*x) + col+i*y);
                             moveCount += 1;
-                            _grid[row+i*x][col+i*y].setMoveHighlighted(highlight);
                         }
                         break;
                     }
@@ -332,18 +290,21 @@ int Chess::getPossibleMoves(Bit &bit, BitHolder &src, bool highlight){
                 if(_grid[srcSquare.getRow() + x][srcSquare.getColumn() + y].empty()
                     || _grid[srcSquare.getRow() + x][srcSquare.getColumn() + y].bit()->gameTag() / 128 != bit.gameTag() / 128){
                     possibleMoves[moveCount] = 8*(srcSquare.getRow() + x) + srcSquare.getColumn() + y;
+                    moveList->push_back(8*(srcSquare.getRow() + x) + srcSquare.getColumn() + y);
                     moveCount += 1;
-                    _grid[srcSquare.getRow() + x][srcSquare.getColumn() + y].setMoveHighlighted(highlight);
                 }
             }
         }
         break;
     default:
+        printf("default");
         break;
     }
     possibleMoves[moveCount] = -1; // -1 signals the end of the list; this way we avoid needing to handle memory
                                    // inefficent memory use? probably. messy? definitely. Functional? enough!
-    return moveCount;
+    std::cout <<moveList->size();
+    std::vector<int>* moveListLocation = moveList;
+    return moveListLocation;
 }
 
 //helper function, clears all highlights on the board
@@ -351,6 +312,103 @@ void Chess::clearHighlights(){
     for(int i = 0; i < 64; i++){
         _grid[i/8][i%8].setMoveHighlighted(false);
     }
+}
+
+//The below function generates all possible moves that can be chosen by the player this turn
+//The moves are stored as an std::vector of vectors. Each spot is tied to a spot on the board (starting from spot 0 to 64),
+//And the value stored is a (pointer to) std::vector of ints listing all possible spots it can move to.
+//If there's no spots, value=nullptr. This is all stored in class var potentialMoves
+void Chess::generateMoves(){
+    //potentialMoves setup in Chess constructor. All spots will be replaced, so no need to call a clear func
+    for(int i = 0;i<64;i++){
+        if(_grid[i/8][i%8].empty()){ //if empty, no moves
+            potentialMoves[i] = nullptr;
+        } //if not player's piece, no moves
+        else if(getCurrentPlayer()->playerNumber() != _grid[i/8][i%8].bit()->gameTag() / 128){
+            potentialMoves[i] = nullptr;
+        } //if neither, then it's the player's piece, and could make a move
+        else{
+            std::vector<int>* myMoveList = nullptr;
+            myMoveList = getPossibleMoves(*_grid[i/8][i%8].bit(),_grid[i/8][i%8]);
+            std::cout<<"what";//<<std::endl;
+            if(myMoveList->size() == 0){ //if piece cannot move, nullptr
+                potentialMoves[i] = nullptr;
+            }
+            else{ //if piece can move, add the list for that spot
+                std::cout<<i<<std::endl;
+                potentialMoves[i] = myMoveList;
+            }
+        }
+    }
+}
+
+//function for setting the board based on FEN string
+void Chess::FENtoBoard(std::string FEN){
+    int gameState = -1; //tracks if we need to handle gameState info from FEN.
+                       //-1 means we don't, otherwise it correlates to the pos in the string with gameState
+    int boardPos = 0; //ties to the position on the board of the next piece.
+    for(int i = 0; i < FEN.length(); i++){
+        //EMPTY SPACE HANDLER
+        if(48 <= FEN[i] && FEN[i] <=57){
+            boardPos += FEN[i] - 48; // FEN - 48 so as to change the char into it's correlated int value
+            continue;
+        }
+        if(FEN[i] == 47){ // 47 = / . Represents a transition to the next line. not needed here
+            continue;
+        }
+        if(FEN[i] == 32){ // 32 = space. Represents when board position starts.
+            gameState = i;
+            break; //break so as to have seperate loop handle it.
+        }
+        
+        std::cout << FEN[i] << std::endl;
+        //upper = white = 0. all upper chars have val < 95, so remainder = player num
+        ChessPiece myPiece;
+        switch(FEN[i] % 32){ //char's num value. doing overcomplicated math to get both upper/lowercase
+            case 16: // p = 80, 112
+                myPiece = Pawn;
+                break;
+            case 18: // r = 82, 114
+                myPiece = Rook;
+                break;
+            case 14: // n = 78, 110
+                myPiece = Knight;
+                break;
+            case 2: // b = 66, 98
+                myPiece = Bishop;
+                break;
+            case 17: // q = 81, 113
+                myPiece = Queen;
+                break;
+            case 11: // k = 75, 107
+                myPiece = King;
+                break;
+            default:
+                std::cout <<"error: improper Fen input" <<std::endl;
+                break;
+        }
+        //equation needed since FEN starts at top left, but ours starts at bottom left.
+        int position = (8 - boardPos/8)*8 - (8 - boardPos%8);
+        // FEN / 95 since < 95 means 0 meaning W, and >95 means 1 meaning B
+        Chess::setPiece(position, (int)FEN[i] / 95, myPiece);
+        boardPos += 1; //increment for next pos
+    }
+
+    //handle board pos if needed
+    if(gameState != -1){
+        for(int i = gameState; i < FEN.length(); i++){
+            //come back here later!!!!
+        }
+    }
+}
+
+//helper funciton. runs the needed code to place a piece on the board.
+void Chess::setPiece(int pos, int player, ChessPiece piece){
+    Bit* bit = PieceForPlayer(player, piece);
+    bit->setPosition(_grid[pos / 8][pos % 8].getPosition());
+    bit->setParent(&_grid[pos / 8][pos % 8]);
+    bit->setGameTag(piece + player * 128);
+    _grid[pos / 8][pos % 8].setBit(bit);
 }
 
 //
