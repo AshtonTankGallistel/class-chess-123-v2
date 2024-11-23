@@ -114,6 +114,18 @@ bool Chess::canBitMoveFromTo(Bit& bit, BitHolder& src, BitHolder& dst)
 
 void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst)
 {
+
+    //update state/promote
+    ChessSquare& srcSquare = static_cast<ChessSquare&>(src);
+    ChessSquare& dstSquare = static_cast<ChessSquare&>(dst);
+    //PROMOTE
+    std::cout<<dstSquare.getRow()<<std::endl;
+    if(bit.gameTag() % 128 == Pawn && (dstSquare.getRow() == 0 || dstSquare.getRow() == 7)){
+        setPiece(dstSquare.getSquareIndex(), bit.gameTag() / 128, Queen);
+    }
+    //
+
+    //wrap up turn
     clearHighlights(); //clear highlights from move
     endTurn();
     generateMoves(); //generate moves for new current player
@@ -350,7 +362,7 @@ void Chess::generateMoves(){
                 potentialMoves[i] = nullptr;
             }
             else{ //if piece can move, add the list for that spot
-                std::cout<<i<<std::endl;
+                //std::cout<<i<<std::endl;
                 potentialMoves[i] = myMoveList;
             }
         }
