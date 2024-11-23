@@ -123,8 +123,45 @@ void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst)
     if(bit.gameTag() % 128 == Pawn && (dstSquare.getRow() == 0 || dstSquare.getRow() == 7)){
         setPiece(dstSquare.getSquareIndex(), bit.gameTag() / 128, Queen);
     }
-    //
-
+    //STATE UPDATE
+    //CASTLING
+    //below statements always ran, since they start true and can't become true again
+    switch(srcSquare.getSquareIndex()){ //when the piece moves
+        //towers
+        case 0:
+            myState->canCastle[0] = false; break;
+        case 7:
+            myState->canCastle[1] = false; break;
+        case 56:
+            myState->canCastle[2] = false; break;
+        case 63:
+            myState->canCastle[3] = false; break;
+        //kings
+        case 4: //W
+            myState->canCastle[0] = false; break;
+            myState->canCastle[1] = false; break;
+        case 59: //B
+            myState->canCastle[2] = false; break;
+            myState->canCastle[3] = false; break;
+    }
+    switch(dstSquare.getSquareIndex()){ //when the piece is captured
+        //towers
+        case 0:
+            myState->canCastle[0] = false; break;
+        case 7:
+            myState->canCastle[1] = false; break;
+        case 56:
+            myState->canCastle[2] = false; break;
+        case 63:
+            myState->canCastle[3] = false; break;
+        //kings
+        case 4: //W
+            myState->canCastle[0] = false; break;
+            myState->canCastle[1] = false; break;
+        case 59: //B
+            myState->canCastle[2] = false; break;
+            myState->canCastle[3] = false; break;
+    }
     //wrap up turn
     clearHighlights(); //clear highlights from move
     endTurn();
@@ -323,6 +360,24 @@ std::vector<int>* Chess::getPossibleMoves(Bit &bit, BitHolder &src){
                 }
             }
         }
+        /*
+        //consider castling
+        if(myState->canCastle[bit.gameTag() / 128]){ //left castle
+            int i = srcSquare.getSquareIndex(); //i = index. used for readability
+            //if all 3 between pieces are empty, can castle
+            if(_grid[(i-1)/8][(i-1)%8].empty() && _grid[(i-2)/8][(i-2)%8].empty() && _grid[(i-3)/8][(i-3)%8].empty()){
+                moveList->push_back(8*(srcSquare.getRow()) + srcSquare.getColumn() - 2);
+            }
+        
+        }
+        if(myState->canCastle[bit.gameTag() / 128 + 1]){ //right castle
+            int i = srcSquare.getSquareIndex(); //i = index. used for readability
+            //if all 3 between pieces are empty, can castle
+            if(_grid[(i+1)/8][(i+1)%8].empty() && _grid[(i+2)/8][(i+2)%8].empty()){
+                moveList->push_back(8*(srcSquare.getRow()) + srcSquare.getColumn() + 2);
+            }
+        }
+        */
         break;
     default:
         printf("default");
