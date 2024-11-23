@@ -5,8 +5,21 @@ const int HUMAN_PLAYER = -1;
 
 Chess::Chess()
 {
-    //potentialMoves.reserve(64); //want 1 per space on the board
-    //done here so as to ensure there's space when called elsewhere
+    //set basic gameState. may end up unnessecary depending on how it's handled elsewhere
+    //This acts moreso as a safety net in case said handling is not called.
+    //update: needed to rehaul it because vs failed to display the error message for a half hour. fun!
+    myState = new ChessState();
+}
+
+Chess::ChessState::ChessState(){
+    for(bool i : canCastle){
+        i = true;
+    }
+    for(bool i : canEnPassant){
+        i = false;
+    }
+    halfMoves = 0;
+    totalMoves = 0;
 }
 
 Chess::~Chess()
@@ -54,6 +67,9 @@ void Chess::setUpBoard()
 
     //setup pieces. 0=W,1=B
     FENtoBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+    for(bool i : myState->canCastle){
+        i = true;
+    }
 
     //generate moves for starting player
     generateMoves();
@@ -302,7 +318,7 @@ std::vector<int>* Chess::getPossibleMoves(Bit &bit, BitHolder &src){
     }
     possibleMoves[moveCount] = -1; // -1 signals the end of the list; this way we avoid needing to handle memory
                                    // inefficent memory use? probably. messy? definitely. Functional? enough!
-    std::cout <<moveList->size();
+    
     std::vector<int>* moveListLocation = moveList;
     return moveListLocation;
 }
@@ -330,7 +346,6 @@ void Chess::generateMoves(){
         else{
             std::vector<int>* myMoveList = nullptr;
             myMoveList = getPossibleMoves(*_grid[i/8][i%8].bit(),_grid[i/8][i%8]);
-            std::cout<<"what";//<<std::endl;
             if(myMoveList->size() == 0){ //if piece cannot move, nullptr
                 potentialMoves[i] = nullptr;
             }
@@ -361,7 +376,6 @@ void Chess::FENtoBoard(std::string FEN){
             break; //break so as to have seperate loop handle it.
         }
         
-        std::cout << FEN[i] << std::endl;
         //upper = white = 0. all upper chars have val < 95, so remainder = player num
         ChessPiece myPiece;
         switch(FEN[i] % 32){ //char's num value. doing overcomplicated math to get both upper/lowercase
@@ -394,11 +408,80 @@ void Chess::FENtoBoard(std::string FEN){
         boardPos += 1; //increment for next pos
     }
 
-    //handle board pos if needed
+    //set default game state. some may be overriden, and we can't fully tell which will/won't as we go.
+    //As such, all are set to false to be safe. These can be overriden manually after calling this if needed
+    for(bool i : myState->canCastle){
+        i = false;
+    }
+    for(bool i : myState->canEnPassant){
+        i = false;
+    }
+    myState->halfMoves = 0;
+    myState->totalMoves = 0;
+
+    //handle board pos if needed (sorry this is so long...)
     if(gameState != -1){
-        for(int i = gameState; i < FEN.length(); i++){
-            //come back here later!!!!
+        gameState++; //move from space to player
+        //CURRENT PLAYER
+        //ok ok. hear me out. there's no dedicated way to manually set the player.
+        //but b always goes second. and this should be called at the start of a game. so...
+        if(gameState == 'b'){
+            endTurn(); //if there's a better way to do this, i apologize.
         }
+        gameState += 2; //skip to castle info.
+        //CASTLING
+        while(FEN[gameState] != ' '){
+            switch(FEN[gameState]){
+                case 'Q':
+                    myState->canCastle[0] = true; break;
+                case 'K':
+                    myState->canCastle[1] = true; break;
+                case 'q':
+                    myState->canCastle[2] = true; break;
+                case 'k':
+                    myState->canCastle[3] = true; break;
+                default: break;
+            }
+            gameState++;
+        }
+        gameState++;
+        //EN PASSANT
+        if(FEN[gameState] != '-'){
+            while(FEN[gameState] != ' '){
+                //for each pair (pair= char and number) get the position in enPas array
+                int enPasPosition = FEN[gameState] - 97; //get pos in 8 spots
+                //determine if w or b
+                if(FEN[gameState] == 54){ //54 = lane 6 = black piece
+                    enPasPosition += 8; //set to latter half since
+                }
+                myState->canEnPassant[enPasPosition] = true;
+                gameState += 2;
+            }
+        }
+        else{
+            gameState += 2;
+        }
+        //MOVE COUNTERS
+        while(FEN[gameState] != '-' && FEN[gameState] != ' '){
+            myState->halfMoves *= 10;
+            myState->halfMoves = FEN[gameState] - 48;
+            gameState++;
+        }
+        gameState++;
+        if(FEN[gameState] != ' '){ //if last was a -, you'd still be on a _, so skip forward 1
+            gameState++;
+        }
+        myState->totalMoves = FEN[gameState] - 48;
+        while(gameState < FEN.length()){
+            myState->halfMoves *= 10;
+            myState->halfMoves = FEN[gameState] - 48;
+            gameState++;
+        }
+        //ok so you know what i said about setting turns earlier? how there's no dedicated way to set them?
+        //I was going to do a loop to add the num of turns accounted for above.
+        //but, that would likely result in a lot of loading time. Additionally, afaik, other than player...
+        //nothing actually needs the num of turns, outside of it being tracked in gamestate.
+        //as such, I'm not adding a loop here, unless it turns out I need to later. sry for the wall of text
     }
 }
 

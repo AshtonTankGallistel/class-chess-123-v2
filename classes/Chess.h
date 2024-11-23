@@ -46,6 +46,7 @@ public:
     //HELPER FUNCTION, SETS A PIECE ONTO THE BOARD
     void        setPiece(int pos, int player, ChessPiece piece);
 
+
     void        stopGame() override;
     BitHolder& getHolderAt(const int x, const int y) override { return _grid[y][x]; }
 
@@ -61,15 +62,16 @@ private:
     //ENDS AT -1.
     int         possibleMoves[28];
     std::vector<int>* potentialMoves[64];
-};
+    //GAMESTATE STRUCT. USED FOR MAIN GAMESTATE, AND AI SEARCHING GAMESTATES
+    struct ChessState{
+        //note: i'm going to try and change the arrays to bytes later. putting this comment to remind myself
+        bool canCastle[4]; //{leftWhite,RightWhite,LeftBlack,RightBlack}
+        bool canEnPassant[16]; //White 0-7, Black 0-7
+        int halfMoves; //num of moves since the last time a pawn moved or a piece was captured (1 per player)
+        int totalMoves; //num of moves total (1 per both players)
+        ChessState();
+    };
 
-//
-// ADDED GAMESTATE CLASS (USES BITBOARDS)
-//
-class ChessState
-{
-public:
-    ChessState();
-    bool canCastle[4]; //{leftWhite,RightWhite,LeftBlack,RightBlack}
-    bool canEnPassant[16]; //White 0-7, Black 0-7
+    //MAIN GAMESTATE VAR. TRACKS THE CURRENT GAMESTATE.
+    ChessState* myState;
 };
